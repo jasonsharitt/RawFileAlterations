@@ -17,7 +17,7 @@ Public Class Form1
     Dim tagid1 As String
     Dim lineSplit As String()
     Dim linesplit2 As String()
-    Dim timetest As Integer
+    Dim timetest As Decimal
     Dim noms As Decimal
     Dim hertz As String
     Dim sequencelist As New List(Of Integer)
@@ -55,48 +55,37 @@ Public Class Form1
             If savefilename = "" Then
                 MsgBox("You must indicate a save file", , "ERROR")
             Else
-                linestart = InputBox("Input starting line position. (Default is 404)", "Starting Line Entry", , 250, 75)
                 tagid1 = InputBox("Input hexadecimal TagID to search for", "TagID Entry", , 250, 75)
-                If linestart = "" Then
-                    linestart = "404"
-                End If
                 filereader = My.Computer.FileSystem.OpenTextFileReader(strFilename)
-                linecounter = 1
-                totalrowcount = 1
+                totalrowcount = 0
                 Do Until filereader.EndOfStream
                     filereader.ReadLine()
                     totalrowcount += 1
                 Loop
-                Dim progressmax As Integer = totalrowcount - CInt(linestart) + 1
+                filereader.Close()
+                Dim progressmax As Integer = totalrowcount
                 ProgressBar1.Maximum = progressmax
                 ProgressBar1.Minimum = 0
-                ProgressBar1.Increment(CInt(linestart))
-                filereader.Close()
-                filereader = My.Computer.FileSystem.OpenTextFileReader(strFilename)
             End If
-            filereader.Close()
+
 
             filereader = My.Computer.FileSystem.OpenTextFileReader(strFilename)
             filemaker = New StreamWriter(savefilename, False)
-            linecounter = 3
-            '********Create the Raw File Header*************
-            Do While linecounter <= CInt(linestart + 1)
-                line = (filereader.ReadLine())
-                filemaker.WriteLine(line)
-                linecounter += 1
-                ProgressBar1.Increment(1)
-            Loop
-            '**********End Header Creation*******************
-
-            '*********Cycle through empty line spaces****
-            If line = "" Then
-                line = filereader.ReadLine()
-            End If
             Do Until filereader.EndOfStream()
                 line = filereader.ReadLine()
-                If line <> "" Then
-                    lineSplit = line.Split(New [Char]() {","})
-                    If lineSplit(5).Contains(tagid1) Then
+                If line = "" Then
+                    filemaker.WriteLine(line)
+                ElseIf line <> "" Then
+                    If line.Contains(",") Then
+                        lineSplit = line.Split(New [Char]() {","})
+                        If lineSplit.Count = 17 Then
+                            If lineSplit(5).Contains(tagid1) Then
+                                filemaker.WriteLine(line)
+                            End If
+                        Else
+                            filemaker.WriteLine(line)
+                        End If
+                    Else
                         filemaker.WriteLine(line)
                     End If
                 End If
@@ -108,7 +97,7 @@ Public Class Form1
     End Sub
 
     Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
-        'This function removes all lines after the indicated time.
+        'This function removes all lines before or after the indicated time.
         fd.Title = "Choose RAW File"
         fd.InitialDirectory = "C:\Users\jsharitt\Desktop\ForJason\PROBEEF\Dress Rehearsal"
         fd.Filter = "All files (*.txt)|*.txt|All Files (*.txt)|*.txt"
@@ -131,54 +120,73 @@ Public Class Form1
             If savefilename = "" Then
                 MsgBox("You must indicate a save file", , "ERROR")
             Else
-                linestart = InputBox("Input starting line position. (Default is 404)", "Starting Line Entry", , 250, 75)
                 timequit = InputBox("Input time to stop on", "Time Entry", , 250, 75)
-                If linestart = "" Then
-                    linestart = "404"
-                End If
                 filereader = My.Computer.FileSystem.OpenTextFileReader(strFilename)
-                linecounter = 1
-                totalrowcount = 1
+                totalrowcount = 0
                 Do Until filereader.EndOfStream
                     line = filereader.ReadLine()
                     totalrowcount += 1
                 Loop
-                Dim progressmax As Integer = totalrowcount - CInt(linestart) + 1
-                ProgressBar1.Maximum = progressmax
+
+                ProgressBar1.Maximum = totalrowcount
                 ProgressBar1.Minimum = 0
-                ProgressBar1.Increment(CInt(linestart))
                 filereader.Close()
+
+
                 filereader = My.Computer.FileSystem.OpenTextFileReader(strFilename)
-            End If
-            filereader.Close()
-
-            filereader = My.Computer.FileSystem.OpenTextFileReader(strFilename)
-            filemaker = New StreamWriter(savefilename, False)
-            linecounter = 3
-            '********Create the Raw File Header*************
-            Do While linecounter <= CInt(linestart + 1)
-                line = (filereader.ReadLine())
-                filemaker.WriteLine(line)
-                linecounter += 1
-                ProgressBar1.Increment(1)
-            Loop
-            '**********End Header Creation*******************
-
-            '*********Cycle through empty line spaces****
-            If line = "" Then
-                line = filereader.ReadLine()
-            End If
-            Do While timetest > timequit
-                line = filereader.ReadLine()
-                If line <> "" Then
-                    lineSplit = line.Split(New [Char]() {","})
-                    filemaker.WriteLine(line)
-                    timetest = CInt(lineSplit(0))
+                filemaker = New StreamWriter(savefilename, False)
+                timetest = 0
+                If rdoAfter.Checked = True Then
+                    Do While timetest < timequit
+                        line = filereader.ReadLine()
+                        If line = "" Then
+                            filemaker.WriteLine(line)
+                        ElseIf line <> "" Then
+                            If line.Contains(",") Then
+                                lineSplit = line.Split(New [Char]() {","})
+                                If lineSplit.Count = 17 Then
+                                    timetest = CDec(lineSplit(0))
+                                    If timetest < timequit Then
+                                        filemaker.WriteLine(line)
+                                    End If
+                                Else
+                                    filemaker.WriteLine(line)
+                                End If
+                            Else
+                                filemaker.WriteLine(line)
+                            End If
+                        End If
+                        ProgressBar1.Increment(1)
+                    Loop
+                    filereader.Close()
+                    filemaker.Close()
                 End If
-                ProgressBar1.Increment(1)
-            Loop
-            filereader.Close()
-            filemaker.Close()
+                If rdoBefore.Checked = True Then
+                    Do Until filereader.EndOfStream()
+                        line = filereader.ReadLine()
+                        If line = "" Then
+                            filemaker.WriteLine(line)
+                        ElseIf line <> "" Then
+                            If line.Contains(",") Then
+                                lineSplit = line.Split(New [Char]() {","})
+                                If lineSplit.Count = 17 Then
+                                    timetest = CDec(lineSplit(0))
+                                    If timetest > timequit Then
+                                        filemaker.WriteLine(line)
+                                    End If
+                                Else
+                                    filemaker.WriteLine(line)
+                                End If
+                            Else
+                                filemaker.WriteLine(line)
+                            End If
+                        End If
+                        ProgressBar1.Increment(1)
+                    Loop
+                    filereader.Close()
+                    filemaker.Close()
+                End If
+            End If
         End If
     End Sub
 
